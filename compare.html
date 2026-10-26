@@ -1,0 +1,1340 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Content Compare</title>
+<style>
+  :root {
+    --bg: #f5f5f2; --surface: #ffffff; --surface-2: #f0efeb; --text: #1a1a1a; --muted: #66665f; --border: #dcdbd5;
+    --accent: #2850c8; --accent-soft: #e6ecfb; --on-accent: #ffffff;
+    --del-bg: #fde4e1; --del-text: #9a1c12; --add-bg: #dff3e4; --add-text: #17602f;
+    --warn-bg: #fff3d1; --warn-text: #6e4f00;
+    --tone-publish: #2850c8; --tone-template: #b4580a; --tone-removed: #b3261e; --tone-content: #2850c8; --tone-other: #6b6b63;
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141414; --surface: #1d1d1c; --surface-2: #262624; --text: #ededea; --muted: #a2a29a; --border: #34342f;
+      --accent: #86a6ff; --accent-soft: #1f2a48; --on-accent: #0d1530;
+      --del-bg: #3d1c19; --del-text: #ffb4aa; --add-bg: #173320; --add-text: #9be0b0;
+      --warn-bg: #3a2f10; --warn-text: #ffd875;
+      --tone-publish: #86a6ff; --tone-template: #f0a35c; --tone-removed: #ff8a80; --tone-content: #86a6ff; --tone-other: #a2a29a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141414; --surface: #1d1d1c; --surface-2: #262624; --text: #ededea; --muted: #a2a29a; --border: #34342f;
+    --accent: #86a6ff; --accent-soft: #1f2a48; --on-accent: #0d1530;
+    --del-bg: #3d1c19; --del-text: #ffb4aa; --add-bg: #173320; --add-text: #9be0b0;
+    --warn-bg: #3a2f10; --warn-text: #ffd875;
+    --tone-publish: #86a6ff; --tone-template: #f0a35c; --tone-removed: #ff8a80; --tone-content: #86a6ff; --tone-other: #a2a29a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font-family: "Modern Era", system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 14px; line-height: 1.5; }
+  main { max-width: 1320px; margin: 0 auto; padding: 28px 16px 72px; }
+  h1 { font-size: 24px; margin: 0; letter-spacing: -0.01em; }
+  h2 { font-size: 16px; margin: 0 0 12px; }
+  .tagline { color: var(--muted); margin: 4px 0 24px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+  .step { display: flex; align-items: center; gap: 10px; }
+  .num { width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: var(--on-accent); font-size: 13px; display: inline-grid; place-items: center; flex: none; }
+  .modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 22px; }
+  @media (max-width: 760px) { .modes { grid-template-columns: 1fr; } }
+  .mode { text-align: left; padding: 14px; border-radius: var(--radius); border: 1.5px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; font: inherit; }
+  .mode b { display: block; font-size: 15px; margin-bottom: 2px; }
+  .mode span { color: var(--muted); font-size: 13px; }
+  .mode[aria-checked="true"] { border-color: var(--accent); background: var(--accent-soft); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+  .grid.three { grid-template-columns: 1fr 1fr 1fr; }
+  @media (max-width: 760px) { .grid, .grid.three { grid-template-columns: 1fr; } }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field > span { font-weight: 600; font-size: 13px; }
+  .field small, .hint { color: var(--muted); font-size: 12px; }
+  .side-title { font-weight: 600; margin: 4px 0 -4px; grid-column: 1 / -1; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+  input[type=text], input[type=password], input[type=search], select {
+    font: inherit; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); width: 100%; min-width: 0; }
+  input:focus-visible, select:focus-visible, button:focus-visible, summary:focus-visible, .drop:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .common { margin-top: 14px; }
+  details.advanced { margin-top: 14px; }
+  details.advanced > summary { cursor: pointer; color: var(--muted); }
+  details.advanced .row { margin-top: 10px; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+  .row label { display: inline-flex; gap: 6px; align-items: center; }
+  .actions { margin-top: 18px; }
+  button { font: inherit; padding: 9px 16px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
+  button.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
+  button.link { border: none; background: none; color: var(--accent); padding: 9px 4px; text-decoration: underline; }
+  button.small { padding: 3px 9px; font-size: 12px; }
+  button:disabled { opacity: .5; cursor: default; }
+  .fine { color: var(--muted); font-size: 12px; margin: 12px 0 0; }
+  .status { color: var(--muted); }
+  .error { color: var(--del-text); }
+  .drops { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 760px) { .drops { grid-template-columns: 1fr; } }
+  .drop { border: 2px dashed var(--border); border-radius: var(--radius); padding: 18px; text-align: center; cursor: pointer; }
+  .drop.over, .drop.loaded { border-color: var(--accent); }
+  .drop.loaded { border-style: solid; }
+  .drop strong { display: block; }
+  .drop small { color: var(--muted); display: block; }
+  .hidden { display: none !important; }
+  .inrow { display: flex; gap: 6px; }
+  .copyp { padding: 0 7px; font-size: 11px; margin-left: 6px; vertical-align: 1px; }
+  .tree { list-style: none; margin: 0; padding-left: 16px; }
+  .tree.root { padding-left: 0; max-height: 55vh; overflow: auto; }
+  .tree li { margin: 2px 0; }
+  .tree .tw { width: 22px; padding: 0; border: none; background: none; color: var(--muted); }
+  .tree .tn { border: none; background: none; padding: 2px 6px; border-radius: 6px; color: var(--text); text-align: left; }
+  .tree .tn:hover { background: var(--accent-soft); }
+  .codebox { position: relative; margin: 6px 0 12px; }
+  .codebox button { position: absolute; top: 6px; right: 6px; }
+  pre.code { margin: 0; padding: 10px 70px 10px 10px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; font: 12px/1.45 Consolas, monospace; white-space: pre; overflow: auto; max-height: 260px; }
+  .saved { background: var(--accent-soft); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 14px; }
+  .saved .grid { margin-top: 8px; }
+  .saved-head { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; }
+
+  /* layout with projects sidebar */
+  .shell { display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: 20px; align-items: start; }
+  .sidebar { position: sticky; top: 16px; padding: 16px; }
+  .sb-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .sb-head h2 { margin: 0; }
+  .proj-list { display: flex; flex-direction: column; gap: 8px; }
+  .proj { position: relative; text-align: left; width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
+  .proj:hover { border-color: var(--accent); }
+  .proj[aria-current="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+  .proj .pname { font-weight: 600; padding-right: 44px; display: block; }
+  .proj .ppath { display: block; font-size: 11.5px; color: var(--muted); font-family: Consolas, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .proj .penvs { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .envchip { font-size: 11px; padding: 1px 7px; border-radius: 9px; background: var(--surface-2); color: var(--muted); }
+  .envchip.ready::before { content: "\25CF  "; color: var(--add-text); }
+  .envchip.partial::before { content: "\25D0  "; color: var(--warn-text); }
+  .proj .pedit { position: absolute; top: 6px; right: 6px; padding: 2px 8px; font-size: 12px; }
+  .proj .ptag { position: absolute; top: 9px; right: 10px; font-size: 10.5px; color: var(--muted); }
+  .sb-empty { color: var(--muted); font-size: 13px; margin: 4px 0 10px; }
+  .sb-foot { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .sb-note { color: var(--muted); font-size: 11.5px; margin: 8px 0 0; }
+  @media (max-width: 900px) {
+    .shell { grid-template-columns: 1fr; }
+    .sidebar { position: static; }
+    .proj-list { flex-direction: row; overflow-x: auto; padding-bottom: 4px; scroll-snap-type: x mandatory; }
+    .proj { min-width: 220px; scroll-snap-align: start; }
+  }
+
+  /* project editor */
+  dialog.editor { border: 1px solid var(--border); border-radius: 12px; padding: 0; width: min(720px, calc(100vw - 32px)); background: var(--surface); color: var(--text); }
+  dialog.editor::backdrop { background: rgba(0,0,0,.45); }
+  .editor form { padding: 20px; }
+  .editor h2 { margin-bottom: 14px; }
+  .env-rows { display: flex; flex-direction: column; gap: 8px; margin: 8px 0; }
+  .env-row { display: grid; grid-template-columns: 110px 1fr 1fr auto; gap: 8px; align-items: end; }
+  @media (max-width: 620px) { .env-row { grid-template-columns: 1fr 1fr; } .env-row .rm { grid-column: 1 / -1; justify-self: start; } }
+  .env-row .field > span { font-size: 12px; font-weight: 500; color: var(--muted); }
+  .editor-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+  .editor-actions .spacer { flex: 1; }
+  button.danger { color: var(--del-text); border-color: var(--del-text); background: transparent; }
+
+  /* results */
+  .headline { font-size: 20px; font-weight: 700; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0; }
+  .sources { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+  @media (max-width: 760px) { .sources { grid-template-columns: 1fr; } }
+  .source { background: var(--surface-2); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+  .source b { display: block; }
+  .source .warn { color: var(--warn-text); cursor: pointer; }
+  .groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .group { text-align: left; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--tone); border-radius: var(--radius); padding: 14px; cursor: pointer; color: var(--text); font: inherit; }
+  .group[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--tone); }
+  .group .count { font-size: 26px; font-weight: 700; line-height: 1; }
+  .group .gtitle { font-weight: 600; margin: 6px 0 2px; }
+  .group .gdesc { color: var(--muted); font-size: 12.5px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+  .toolbar input[type=search] { flex: 1 1 220px; width: auto; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .seg button { border: none; border-radius: 0; padding: 8px 12px; }
+  .seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .area-title { margin: 18px 0 8px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  details.item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; }
+  details.item > summary { padding: 12px 14px; cursor: pointer; list-style: none; display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: center; }
+  details.item > summary::-webkit-details-marker { display: none; }
+  details.item > summary::after { content: "›"; grid-row: 1 / 3; grid-column: 2; color: var(--muted); font-size: 20px; transition: transform .15s; }
+  details.item[open] > summary::after { transform: rotate(90deg); }
+  .iname { font-weight: 600; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .ipath { font-family: Consolas, "Cascadia Mono", monospace; font-size: 12px; color: var(--muted); word-break: break-all; }
+  .chip { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; background: var(--surface-2); color: var(--tone, var(--muted)); white-space: nowrap; }
+  .ibody { padding: 0 14px 14px; }
+  .explain { background: var(--surface-2); border-left: 3px solid var(--accent); padding: 10px 12px; border-radius: 0 8px 8px 0; margin: 2px 0 10px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; color: var(--muted); font-size: 12px; }
+  .meta code { font-family: Consolas, monospace; }
+  .change { margin-top: 14px; }
+  .change h4 { margin: 0 0 6px; font-size: 13px; }
+  .cmp { display: grid; grid-template-columns: 120px 1fr; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; font-size: 13px; }
+  .cmp > div { padding: 7px 10px; border-top: 1px solid var(--border); word-break: break-word; }
+  .cmp > div:nth-child(-n+2) { border-top: none; }
+  .cmp .lbl { background: var(--surface-2); color: var(--muted); font-size: 12px; }
+  del { background: var(--del-bg); color: var(--del-text); text-decoration: line-through; border-radius: 3px; padding: 0 1px; }
+  ins { background: var(--add-bg); color: var(--add-text); text-decoration: none; border-radius: 3px; padding: 0 1px; }
+  .empty { color: var(--muted); font-style: italic; }
+  .cmp del, table.layout del { text-decoration: none; }
+  @media (max-width: 520px) { .cmp { grid-template-columns: 1fr; } .cmp > div:nth-child(2) { border-top: none; } .cmp > div:nth-child(3) { border-top: 1px solid var(--border); } }
+  table.layout { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.layout th, table.layout td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.layout tr:last-child td { border-bottom: none; }
+  table.layout th { color: var(--muted); font-weight: 600; font-size: 12px; background: var(--surface-2); }
+  .tablewrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
+  pre.diff { margin: 6px 0 0; font-size: 12px; font-family: Consolas, monospace; border: 1px solid var(--border); border-radius: 8px; overflow-x: auto; max-height: 380px; }
+  pre.diff div { padding: 0 8px; white-space: pre-wrap; word-break: break-all; }
+  pre.diff .d { background: var(--del-bg); color: var(--del-text); }
+  pre.diff .a { background: var(--add-bg); color: var(--add-text); }
+  pre.diff .g { color: var(--muted); }
+  details.raw > summary { cursor: pointer; color: var(--muted); font-size: 12px; margin-top: 8px; }
+  .notice { background: var(--warn-bg); color: var(--warn-text); border-radius: 8px; padding: 10px 12px; margin-top: 18px; font-size: 13px; }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 8px 14px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Content Compare</h1>
+  <p class="tagline">Find what's different between two versions of a Sitecore site, and what to do about it.</p>
+
+  <div class="shell">
+  <aside class="card sidebar" aria-label="Projects">
+    <div class="sb-head"><h2>Projects</h2><button class="small primary" id="addProject">+ Add project</button></div>
+    <p class="sb-empty" id="projEmpty">No projects yet. Add one to save its Context IDs, so you can pick it next time instead of pasting.</p>
+    <div class="proj-list" id="projList"></div>
+    <div class="sb-foot">
+      <button class="small" id="importBtn">Import</button>
+      <button class="small" id="exportBtn">Export</button>
+      <button class="small link" id="clearBtn">Remove all</button>
+      <input type="file" id="importFile" accept=".json" class="hidden">
+    </div>
+    <p class="sb-note" id="sbNote">Saved in this browser on this computer only. Export to back up or move to another computer.</p>
+  </aside>
+  <div class="content">
+
+  <section class="card" id="setup">
+    <h2 class="step"><span class="num">1</span> What do you want to check?</h2>
+    <div class="modes" role="radiogroup" aria-label="Comparison type">
+      <button class="mode" role="radio" data-mode="unpub"><b>Unpublished changes</b><span>XM Cloud · Preview vs Live in one environment</span></button>
+      <button class="mode" role="radio" data-mode="envs"><b>Two environments</b><span>XM Cloud · e.g. UAT vs Production</span></button>
+      <button class="mode" role="radio" data-mode="files"><b>Export files</b><span>XP or XM Cloud · files from the PowerShell script</span></button>
+    </div>
+
+    <h2 class="step"><span class="num">2</span> <span id="step2title">Connection details</span></h2>
+
+    <div id="saved" class="saved hidden">
+      <div class="saved-head"><span>Using project <b id="p-name"></b></span><button class="link small" id="p-manual">Enter IDs manually instead</button></div>
+      <div class="grid three">
+        <label class="field" id="p-env-wrap"><span>Environment</span><select id="p-env"></select></label>
+        <label class="field hidden" id="p-a-wrap"><span>Working environment</span><select id="p-a"></select></label>
+        <label class="field hidden" id="p-b-wrap"><span>Environment with the issue</span><select id="p-b"></select></label>
+      </div>
+    </div>
+
+    <div id="form-unpub" class="mode-form">
+      <div class="grid three">
+        <label class="field"><span>Environment name</span><input type="text" id="u-env" value="XMC"><small>Just a label for the report</small></label>
+        <label class="field"><span>Preview Context ID</span><input type="password" id="u-prev" autocomplete="off"></label>
+        <label class="field"><span>Live Context ID</span><input type="password" id="u-live" autocomplete="off"></label>
+      </div>
+      <p class="hint">XM Cloud Deploy → your environment → <b>Developer settings</b>. Copy the Context ID with the switch on Preview, then on Live.</p>
+    </div>
+
+    <div id="form-envs" class="mode-form hidden">
+      <div class="grid">
+        <div class="side-title">Working environment</div>
+        <label class="field"><span>Name</span><input type="text" id="e-a-name" value="UAT"></label>
+        <label class="field"><span>Context ID</span><input type="password" id="e-a-id" autocomplete="off"></label>
+        <div class="side-title">Environment with the issue</div>
+        <label class="field"><span>Name</span><input type="text" id="e-b-name" value="PROD"></label>
+        <label class="field"><span>Context ID</span><input type="password" id="e-b-id" autocomplete="off"></label>
+        <label class="field"><span>Which content?</span>
+          <select id="e-type">
+            <option value="live">Live: what visitors see (published)</option>
+            <option value="preview">Preview: what's in the CMS</option>
+          </select>
+          <small>Copy the matching Context ID (Live or Preview) for both environments.</small>
+        </label>
+      </div>
+    </div>
+
+    <div id="form-files" class="mode-form hidden">
+      <div class="drops">
+        <div class="drop" id="dropA" tabindex="0"><strong>Working environment</strong><small>e.g. UAT export (.json). Drop it here or click.</small><small class="info"></small></div>
+        <div class="drop" id="dropB" tabindex="0"><strong>Environment with the issue</strong><small>e.g. PROD export (.json). Drop it here or click.</small><small class="info"></small></div>
+      </div>
+      <input type="file" id="fileA" accept=".json" class="hidden">
+      <input type="file" id="fileB" accept=".json" class="hidden">
+      <p class="hint">Make the files with <b>Export-Content.ps1</b> (Sitecore PowerShell ISE) or <b>edge-export.mjs</b>.</p>
+      <details class="advanced">
+        <summary>How to make the files (copy and paste)</summary>
+        <p class="hint"><b>XM Cloud, from a terminal</b> in this folder. Run once with the Preview ID and once with the Live ID (or another environment's ID):</p>
+        <div class="codebox"><button class="small" data-copy-target="cmdEdge">Copy</button><pre class="code" id="cmdEdge">$env:EDGE_CONTEXT_ID = "&lt;Preview Context ID&gt;"; node edge-export.mjs --env XMC --name preview --path "/sitecore/content/&lt;Collection&gt;/&lt;Site&gt;"
+$env:EDGE_CONTEXT_ID = "&lt;Live Context ID&gt;"; node edge-export.mjs --env XMC --name live --path "/sitecore/content/&lt;Collection&gt;/&lt;Site&gt;"</pre></div>
+        <p class="hint"><b>XP (or XM Cloud CMS content), in Sitecore PowerShell ISE</b>: Launchpad &rarr; PowerShell ISE, paste this, edit the SETTINGS at the top, click Execute. Read-only. Use <code>$Database = "master"</code> for CMS content and <code>"web"</code> for published content.</p>
+        <div class="codebox"><button class="small" data-copy-target="cmdPs">Copy</button><pre class="code" id="cmdPs">&lt;#
+  Content Compare - READ-ONLY export script
+  ------------------------------------------
+  Paste this into Sitecore PowerShell ISE and click &quot;Execute&quot;.
+  It reads items under the paths below and downloads a .json file to your computer.
+
+  It does NOT create, edit, move, publish or delete anything in Sitecore.
+
+  Run it once in each environment (e.g. UAT and PROD), then open both files
+  in compare.html.
+#&gt;
+
+# ===================== SETTINGS (edit these) =====================
+
+# A label for this environment. It appears in the file name and the report.
+$EnvironmentName = &quot;UAT&quot;
+
+# &quot;master&quot; = content as edited in the CMS
+# &quot;web&quot;    = content that has been published (what the live site shows)
+$Database = &quot;master&quot;
+
+# Which parts of the content tree to read. Add or remove lines as needed.
+$RootPaths = @(
+    &quot;/sitecore/content/Home&quot;
+    # &quot;/sitecore/layout/Renderings&quot;
+    # &quot;/sitecore/templates/Project&quot;
+)
+
+# $true = also read every item underneath each path
+$IncludeChildren = $true
+
+# &quot;*&quot; = all languages, or a single language such as &quot;en&quot;
+$Language = &quot;*&quot;
+
+# Safety limit so a huge tree does not slow the server down
+$MaxItems = 5000
+
+# ==================================================================
+
+# Standard Sitecore fields (names start with &quot;__&quot;) are skipped because they always
+# differ between environments (dates, revision IDs, who edited it).
+# These ones ARE kept, because they affect what the page shows or whether it is published.
+$keepStandardFields = @(
+    &quot;__Renderings&quot;, &quot;__Final Renderings&quot;,
+    &quot;__Display name&quot;, &quot;__Hidden&quot;,
+    &quot;__Never publish&quot;, &quot;__Hide version&quot;,
+    &quot;__Publish&quot;, &quot;__Unpublish&quot;, &quot;__Valid from&quot;, &quot;__Valid to&quot;,
+    &quot;__Workflow&quot;, &quot;__Workflow state&quot;,
+    &quot;__Base template&quot;, &quot;__Insert Rules&quot;, &quot;__Masters&quot;
+)
+
+$results = New-Object System.Collections.Generic.List[object]
+
+foreach ($root in $RootPaths) {
+    if ($results.Count -ge $MaxItems) { break }
+
+    $drivePath = &quot;$($Database):$root&quot;
+    $items = @(Get-Item -Path $drivePath -Language $Language -ErrorAction SilentlyContinue)
+    if ($items.Count -eq 0) {
+        Write-Host &quot;Path not found, skipped: $drivePath&quot; -ForegroundColor Yellow
+        continue
+    }
+    if ($IncludeChildren) {
+        $items += @(Get-ChildItem -Path $drivePath -Recurse -Language $Language)
+    }
+
+    foreach ($item in $items) {
+        if ($results.Count -ge $MaxItems) { break }
+
+        $item.Fields.ReadAll()
+        $fields = [ordered]@{}
+        foreach ($f in $item.Fields) {
+            if ($f.Name.StartsWith(&quot;__&quot;) -and $keepStandardFields -notcontains $f.Name) { continue }
+            $key = $f.Name
+            if ($fields.Contains($key)) { $key = &quot;$($f.Name) [$($f.ID)]&quot; }
+            $fields[$key] = [string]$f.Value
+        }
+
+        $results.Add([ordered]@{
+            id         = $item.ID.ToString()
+            path       = $item.Paths.FullPath
+            name       = $item.Name
+            template   = $item.TemplateName
+            templateId = $item.TemplateID.ToString()
+            language   = $item.Language.Name
+            version    = $item.Version.Number
+            fields     = $fields
+        })
+    }
+}
+
+# Page layouts refer to components and data sources by ID. Look up their names
+# so the report can say &quot;Hero Banner&quot; instead of a GUID. (Read-only.)
+$known = @{}
+foreach ($r in $results) { $known[$r.id] = $true }
+$lookup = [ordered]@{}
+foreach ($r in $results) {
+    foreach ($layoutField in @(&quot;__Renderings&quot;, &quot;__Final Renderings&quot;)) {
+        $value = $r.fields[$layoutField]
+        if (-not $value) { continue }
+        foreach ($m in [regex]::Matches($value, &#x27;\{[0-9A-Fa-f-]{36}\}&#x27;)) {
+            $refId = $m.Value.ToUpper()
+            if ($known.ContainsKey($refId) -or $lookup.Contains($refId) -or $lookup.Count -ge 500) { continue }
+            $ref = Get-Item -Path &quot;$($Database):&quot; -ID $refId -ErrorAction SilentlyContinue
+            if ($ref) { $lookup[$refId] = [ordered]@{ name = $ref.Name; path = $ref.Paths.FullPath } }
+        }
+    }
+}
+
+$export = [ordered]@{
+    tool            = &quot;content-compare&quot;
+    formatVersion   = 1
+    environment     = $EnvironmentName
+    database        = $Database
+    rootPaths       = $RootPaths
+    exportedAt      = (Get-Date).ToString(&quot;o&quot;)
+    sitecoreVersion = [Sitecore.Configuration.About]::VersionInformation()
+    itemCount       = $results.Count
+    truncated       = ($results.Count -ge $MaxItems)
+    lookup          = $lookup
+    items           = $results
+}
+
+if ($export.truncated) {
+    Write-Host &quot;Stopped at $MaxItems items. Narrow the paths or raise MaxItems.&quot; -ForegroundColor Yellow
+}
+
+$json = $export | ConvertTo-Json -Depth 6 -Compress
+$fileName = &quot;content-$EnvironmentName-$Database-$(Get-Date -Format &#x27;yyyyMMdd-HHmm&#x27;).json&quot;
+
+Write-Host &quot;Read $($results.Count) item versions. Downloading $fileName ...&quot; -ForegroundColor Green
+Out-Download -Name $fileName -InputObject $json
+</pre></div>
+      </details>
+    </div>
+
+    <div class="grid common" id="edgeCommon">
+      <label class="field"><span>Start path</span><span class="inrow"><input type="text" id="c-path" placeholder="/sitecore/content/Collection/Site"><button type="button" class="small" data-browse="c-path">Browse…</button></span><small>Use the site item to include Home, Data and Presentation</small></label>
+      <label class="field"><span>Languages</span><input type="text" id="c-lang" value="en" placeholder="en, fr"></label>
+    </div>
+
+    <details class="advanced">
+      <summary>Advanced options</summary>
+      <div class="row">
+        <label><input type="checkbox" id="o-ws" checked> Ignore spacing differences</label>
+        <label>Ignore fields <input type="text" id="o-ignore" placeholder="e.g. __Workflow state" style="width:200px"></label>
+        <label>Max items <input type="text" id="o-max" value="2000" style="width:80px"></label>
+      </div>
+    </details>
+
+    <div class="row actions">
+      <button class="primary" id="run">Compare</button>
+      <button class="link" id="demo">See an example</button>
+      <span class="status" id="status" role="status"></span>
+    </div>
+    <p class="fine">Read-only: this page only reads content. IDs typed into this form aren't saved; only projects you add in the sidebar are.</p>
+  </section>
+
+  <section id="results" class="hidden" aria-live="polite">
+    <div class="card">
+      <p class="headline" id="headline"></p>
+      <p class="sub" id="subline"></p>
+      <div class="sources" id="sources"></div>
+    </div>
+    <div class="groups" id="groups"></div>
+    <div class="toolbar">
+      <input type="search" id="search" placeholder="Filter by name, path or field">
+      <div class="seg" role="group" aria-label="Group by">
+        <button id="by-action" aria-pressed="true">By what to do</button>
+        <button id="by-area" aria-pressed="false">By site area</button>
+      </div>
+      <button id="expand">Expand all</button>
+      <button id="copySummary">Copy summary</button>
+      <button id="csv">Download CSV</button>
+      <button id="saveJson" title="Save both sides as .json files you can compare again later under Export files">Save both as JSON</button>
+    </div>
+    <div id="list"></div>
+    <div id="more" class="hidden" style="text-align:center;margin-top:12px"><button id="moreBtn">Show more</button></div>
+    <p class="notice">Suggestions are for investigation only. Changes to a client's live environment (publishing, content or config) need approval from the technical owner first.</p>
+  </section>
+  </div>
+  </div>
+</main>
+
+<dialog class="editor" id="treeDialog" aria-labelledby="tdTitle">
+  <form method="dialog" style="padding:20px">
+    <h2 id="tdTitle">Choose the start path</h2>
+    <p class="hint" id="tdHint">Click ▸ to open a folder, click a name to use it. Pick the site item to include Home, Data and Presentation.</p>
+    <ul class="tree root" id="treeRoot"></ul>
+    <div class="editor-actions"><button type="submit">Close</button></div>
+  </form>
+</dialog>
+
+<dialog class="editor" id="projDialog" aria-labelledby="pdTitle">
+  <form method="dialog" id="projForm">
+    <h2 id="pdTitle">Add project</h2>
+    <div class="grid">
+      <label class="field"><span>Project name</span><input type="text" id="pd-name" placeholder="e.g. Training site"></label>
+      <label class="field"><span>Languages</span><input type="text" id="pd-lang" value="en" placeholder="en, fr"></label>
+      <label class="field" style="grid-column:1/-1"><span>Start path</span><span class="inrow"><input type="text" id="pd-path" placeholder="/sitecore/content/Collection/Site"><button type="button" class="small" data-browse="pd-path">Browse…</button></span><small>The site item, so Home, Data and Presentation are all included</small></label>
+    </div>
+    <div class="row" style="margin-top:16px;justify-content:space-between">
+      <b>Environments</b>
+      <label class="hint"><input type="checkbox" id="pd-show"> Show IDs</label>
+    </div>
+    <p class="hint" style="margin:2px 0 0">From XM Cloud Deploy &rarr; environment &rarr; Developer settings. Leave blank any you don't have.</p>
+    <div class="env-rows" id="pd-envs"></div>
+    <button type="button" class="small" id="pd-addEnv">+ Add environment</button>
+    <p class="error" id="pd-error" role="alert"></p>
+    <div class="editor-actions">
+      <button type="button" class="danger hidden" id="pd-delete">Delete project</button>
+      <span class="spacer"></span>
+      <button type="button" id="pd-cancel">Cancel</button>
+      <button type="submit" class="primary" id="pd-save">Save project</button>
+    </div>
+  </form>
+</dialog>
+<div class="toast" id="toast" role="status"></div>
+
+<script src="edge-core.js"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const fmtDate = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) + ', ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); };
+  const cap = s => s ? s[0].toUpperCase() + s.slice(1) : s;
+  const label = x => `${x.environment || '?'} ${cap(x.database || '')}`.trim();
+  const lastSeg = p => String(p || '').split('/').filter(Boolean).pop() || '';
+  const store = { get(k) { try { return sessionStorage.getItem('cc.' + k); } catch (e) { return null; } },
+                  set(k, v) { try { sessionStorage.setItem('cc.' + k, v); } catch (e) { /* storage unavailable */ } } };
+
+  const LAYOUT_FIELDS = ['__Renderings', '__Final Renderings'];
+  const CAT_LABEL = {
+    missing: 'Missing', language: 'Language missing', extra: 'Extra item', fields: 'Content changed',
+    layout: 'Components changed', fieldonly: 'Field on one side', tplmissing: 'Template missing', template: 'Different template',
+    moved: 'Moved', idmismatch: 'Different ID'
+  };
+  // Labels that read naturally for the current comparison, e.g. "Not published" / "Only on Live"
+  const catLabel = c => !R ? CAT_LABEL[c]
+    : c === 'missing' ? (R.publishMode ? 'Not published' : 'Missing in ' + R.nB)
+    : c === 'extra' ? (R.publishMode ? 'Only on Live' : 'Only in ' + R.nB)
+    : CAT_LABEL[c];
+  const toneOfCat = c => ({ missing: 'publish', language: 'publish', fields: 'content', layout: 'content', tplmissing: 'template', template: 'template', fieldonly: 'template', extra: 'removed', moved: 'removed', idmismatch: 'other' }[c]);
+
+  let mode = 'unpub';
+  const files = { A: null, B: null };
+  let R = null;               // current comparison result
+  let activeGroup = null, groupBy = 'action', filtered = [], shown = 0, lastHeading = null;
+  const PAGE = 150;
+
+  // ---------------- setup ----------------
+  function setMode(m) {
+    mode = m;
+    document.querySelectorAll('.mode').forEach(b => b.setAttribute('aria-checked', b.dataset.mode === m));
+    ['unpub', 'envs', 'files'].forEach(x => $('form-' + x).classList.toggle('hidden', x !== m));
+    $('edgeCommon').classList.toggle('hidden', m === 'files');
+    $('saved').classList.toggle('hidden', !curProject() || m === 'files');
+    $('p-env-wrap').classList.toggle('hidden', m !== 'unpub');
+    $('p-a-wrap').classList.toggle('hidden', m !== 'envs');
+    $('p-b-wrap').classList.toggle('hidden', m !== 'envs');
+    applyProject();
+    $('step2title').textContent = m === 'files' ? 'Add the two export files' : 'Connection details';
+    $('status').textContent = '';
+    store.set('mode', m);
+  }
+  document.querySelectorAll('.mode').forEach(b => b.onclick = () => setMode(b.dataset.mode));
+
+  ['u-env', 'e-a-name', 'e-b-name', 'c-path', 'c-lang'].forEach(id => {
+    const v = store.get(id); if (v) $(id).value = v;
+    $(id).addEventListener('change', () => store.set(id, $(id).value));
+  });
+
+  function wireDrop(side) {
+    const drop = $('drop' + side), input = $('file' + side);
+    drop.onclick = () => input.click();
+    drop.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); } };
+    input.onchange = () => input.files[0] && readFile(side, input.files[0]);
+    drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+    drop.ondragleave = () => drop.classList.remove('over');
+    drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); e.dataTransfer.files[0] && readFile(side, e.dataTransfer.files[0]); };
+  }
+  function readFile(side, file) {
+    const r = new FileReader();
+    r.onload = () => {
+      try {
+        const json = JSON.parse(String(r.result).replace(/^﻿/, ''));
+        if (!Array.isArray(json.items)) throw new Error('This file has no "items" list. Was it made by Export-Content.ps1 or edge-export.mjs?');
+        files[side] = json;
+        const drop = $('drop' + side);
+        drop.classList.add('loaded');
+        drop.querySelector('.info').innerHTML = `<br><b>${esc(file.name)}</b><br>${esc(label(json))} · ${json.items.length} items`;
+      } catch (e) { setStatus(`Could not read ${file.name}: ${e.message}`, true); }
+    };
+    r.readAsText(file);
+  }
+  wireDrop('A'); wireDrop('B');
+
+  function setStatus(msg, isError) { $('status').innerHTML = isError ? `<span class="error">${esc(msg)}</span>` : esc(msg); }
+
+  async function run() {
+    const btn = $('run');
+    try {
+      let A, B;
+      if (mode === 'files') {
+        if (!files.A || !files.B) return setStatus('Add both export files first.', true);
+        A = files.A; B = files.B;
+      } else {
+        if (!window.EdgeExport) return setStatus('edge-core.js was not found. Keep it in the same folder as this page.', true);
+        const path = $('c-path').value.trim();
+        if (!path) return setStatus('Enter the start path.', true);
+        const common = {
+          rootPaths: [path],
+          languages: $('c-lang').value.split(',').map(s => s.trim()).filter(Boolean),
+          maxItems: parseInt($('o-max').value, 10) || 2000
+        };
+        let sideA, sideB;
+        if (mode === 'unpub') {
+          const env = $('u-env').value.trim() || 'XMC';
+          sideA = { name: 'Preview', contextId: $('u-prev').value, environment: env, database: 'preview' };
+          sideB = { name: 'Live', contextId: $('u-live').value, environment: env, database: 'live' };
+        } else {
+          const type = $('e-type').value, an = $('e-a-name').value.trim() || 'A', bn = $('e-b-name').value.trim() || 'B';
+          sideA = { name: an, contextId: $('e-a-id').value, environment: an, database: type };
+          sideB = { name: bn, contextId: $('e-b-id').value, environment: bn, database: type };
+        }
+        if (!sideA.contextId.trim() || !sideB.contextId.trim()) return setStatus('Paste both Context IDs.', true);
+        if (EdgeExport.cleanContextId(sideA.contextId) === EdgeExport.cleanContextId(sideB.contextId))
+          return setStatus('Both Context IDs are the same. Copy the other one from Developer settings.', true);
+        btn.disabled = true;
+        const read = async s => {
+          try {
+            return await EdgeExport.exportFromEdge({ ...common, ...s, onProgress: n => setStatus(`Reading ${s.name}… ${n} items`) });
+          } catch (e) { e.message = `${s.name} Context ID: ${e.message}`; throw e; }
+        };
+        setStatus(`Reading ${sideA.name}…`);
+        A = await read(sideA);
+        setStatus(`Reading ${sideB.name}…`);
+        B = await read(sideB);
+      }
+      setStatus('');
+      R = compare(A, B);
+      activeGroup = null;
+      renderResults();
+      $('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (e) {
+      setStatus(!e.blocked ? e.message
+        : location.protocol === 'file:'
+          ? `${e.message} This page was opened as a file. Start the local server (see README) and open http://localhost:8765/compare.html instead.`
+          : `${e.message} Check that you're online and no browser extension (ad or privacy blocker) is blocking sitecorecloud.io. Press F12 → Console to see the exact reason.`, true);
+      console.error(e);
+    } finally { btn.disabled = false; }
+  }
+  $('run').onclick = run;
+
+  // ---------------- comparing ----------------
+  const norm = (v, ws) => { v = v == null ? '' : String(v); return ws ? v.replace(/\s+/g, ' ').trim() : v; };
+
+  function compare(A, B) {
+    const ws = $('o-ws').checked;
+    const ignore = new Set($('o-ignore').value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean));
+    // Same environment, CMS content (master/preview) vs published content (web/live) = "not published" check
+    const publishMode = (A.environment || '').toLowerCase() === (B.environment || '').toLowerCase()
+      && ['master', 'preview'].includes(A.database) && ['web', 'live'].includes(B.database);
+    const nA = label(A), nB = label(B);
+
+    // id -> {name, path}, so the report can show names instead of IDs
+    const names = {};
+    [A, B].forEach(x => {
+      Object.entries(x.lookup || {}).forEach(([id, v]) => names[id.toUpperCase()] = v);
+      x.items.forEach(i => names[(i.id || '').toUpperCase()] = { name: i.name || lastSeg(i.path), path: i.path });
+    });
+
+    const k = (a, b) => (a || '').toLowerCase() + '|' + (b || '').toLowerCase();
+    const bById = new Map(), bByPath = new Map(), bIds = new Set(), usedB = new Set();
+    B.items.forEach((it, i) => { bById.set(k(it.id, it.language), i); bByPath.set(k(it.path, it.language), i); bIds.add((it.id || '').toLowerCase()); });
+
+    const rows = [];
+    const row = (it, cats, explain, extra) => rows.push({ id: it.id, name: it.name || lastSeg(it.path), path: it.path, language: it.language, template: it.template, cats, explain, diffs: [], layout: null, ...extra });
+
+    A.items.forEach(a => {
+      let bi = bById.get(k(a.id, a.language)), idMismatch = false;
+      if (bi === undefined) { bi = bByPath.get(k(a.path, a.language)); idMismatch = bi !== undefined; }
+      if (bi === undefined) {
+        if (bIds.has((a.id || '').toLowerCase())) {
+          row(a, ['language'], publishMode
+            ? `The "${a.language}" version has not been published.`
+            : `The "${a.language}" version exists in ${nA} but not in ${nB}. Add that language version in ${nB}, then publish it.`);
+        } else {
+          row(a, ['missing'], publishMode
+            ? 'This item has never been published, so the live site does not have it. Publish it, and its parent items if they are also listed.'
+            : `This item exists in ${nA} but not in ${nB}. It needs to be moved across (package or serialization) or created, then published.`);
+        }
+        return;
+      }
+      usedB.add(bi);
+      const b = B.items[bi], cats = [], notes = [], diffs = [];
+      if (idMismatch) { cats.push('idmismatch'); notes.push(`Same path but a different item ID in each place (${a.id} vs ${b.id}). It was created separately, so anything that links to it by ID can break.`); }
+      if ((a.path || '').toLowerCase() !== (b.path || '').toLowerCase()) { cats.push('moved'); notes.push(`In ${nB} this item is at ${b.path}. It was moved or renamed.`); }
+      const tplMissing = a.templateMissing || b.templateMissing;
+      if (tplMissing) { cats.push('tplmissing'); notes.push(`${a.templateMissing ? nA : nB} doesn't have this item's template ("${a.templateMissing ? b.template : a.template}"). It has probably never been ${publishMode ? 'published' : 'published or deployed'} there, which can make the component show empty or not at all.`); }
+      else if ((a.templateId || '').toLowerCase() !== (b.templateId || '').toLowerCase()) { cats.push('template'); notes.push(`Built on template "${a.template}" in ${nA} but "${b.template}" in ${nB}.`); }
+
+      const fa = a.fields || {}, fb = b.fields || {};
+      // If one side could not load the template it may return no fields; don't report every field as different.
+      if (!(tplMissing && (!Object.keys(fa).length || !Object.keys(fb).length))) {
+        new Set([...Object.keys(fa), ...Object.keys(fb)]).forEach(f => {
+          if (ignore.has(f.toLowerCase())) return;
+          const inA = f in fa, inB = f in fb;
+          if (/ \[dup\]$/.test(f) && inA !== inB) return; // API quirk, not a content difference
+          if (!inA || !inB || norm(fa[f], ws) !== norm(fb[f], ws)) diffs.push({ field: f, a: inA ? fa[f] : null, b: inB ? fb[f] : null });
+        });
+      }
+      const other = diffs.filter(d => !LAYOUT_FIELDS.includes(d.field));
+      const changed = other.filter(d => d.a !== null && d.b !== null), oneSided = other.length - changed.length;
+      let layout = null;
+      if (diffs.length > other.length) {
+        layout = layoutDiff(fa, fb);
+        cats.push('layout');
+        const desc = layout ? describeLayout(layout, nA, nB) : '';
+        notes.push(`${desc ? `The page's components are different (${desc}).` : 'The page layout settings are different.'}${publishMode ? ' Publish the page to update Live.' : ''}`);
+      }
+      if (changed.length) {
+        cats.push('fields');
+        notes.push(publishMode
+          ? `${changed.length === 1 ? `"${changed[0].field}" was` : `${changed.length} fields were`} edited but not published. Publish this item.`
+          : `${changed.length === 1 ? `"${changed[0].field}" is` : `${changed.length} fields are`} different. Update ${nB} to match ${nA}, or confirm the difference is intended.`);
+      }
+      if (oneSided) {
+        cats.push('fieldonly');
+        notes.push(`${oneSided} field(s) exist on only one side. Usually the template gained or lost a field that hasn't been ${publishMode ? 'published' : 'deployed'} yet.`);
+      }
+      if (cats.length) row(a, cats, notes.join(' '), { diffs, layout });
+    });
+
+    B.items.forEach((b, i) => {
+      if (usedB.has(i)) return;
+      row(b, ['extra'], publishMode
+        ? 'This item is on Live but no longer in the CMS. It was probably deleted, moved or renamed and that change was never published. Search for its ID (with the { } brackets) in Content Editor to check.'
+        : `This item exists only in ${nB}. Check whether it should be there before doing anything with it.`);
+    });
+
+    rows.sort((x, y) => x.path.localeCompare(y.path));
+    const root = commonRoot([...(A.rootPaths || []), ...(B.rootPaths || [])], rows);
+    rows.forEach(r => r.area = areaOf(r.path, root));
+    const groups = groupDefs(publishMode, nA, nB)
+      .map(g => ({ ...g, rows: rows.filter(r => r.cats.some(c => g.cats.includes(c))) }))
+      .filter(g => g.rows.length);
+    return { A, B, nA, nB, publishMode, rows, groups, names };
+  }
+
+  function groupDefs(publishMode, nA, nB) {
+    return publishMode ? [
+      { key: 'publish', tone: 'publish', title: 'Needs publishing', desc: 'Edited or created in the CMS, but not on Live yet.', cats: ['missing', 'language', 'fields', 'layout'] },
+      { key: 'templates', tone: 'template', title: 'Templates not on Live', desc: 'Content uses templates that Live does not have. Components may show empty.', cats: ['tplmissing', 'template', 'fieldonly'] },
+      { key: 'removed', tone: 'removed', title: 'Removed but still live', desc: 'Deleted, moved or renamed in the CMS, but Live still has the old item.', cats: ['extra', 'moved'] },
+      { key: 'other', tone: 'other', title: 'Worth a look', desc: 'Same path, different item ID.', cats: ['idmismatch'] }
+    ] : [
+      { key: 'missing', tone: 'removed', title: `Missing in ${nB}`, desc: `Exists in ${nA} only.`, cats: ['missing', 'language'] },
+      { key: 'content', tone: 'content', title: 'Content differs', desc: 'Same item, different field values or page components.', cats: ['fields', 'layout'] },
+      { key: 'structure', tone: 'template', title: 'Template or code differences', desc: 'Usually a code deployment difference, not a content edit.', cats: ['template', 'tplmissing', 'fieldonly'] },
+      { key: 'extra', tone: 'other', title: `Only in ${nB}`, desc: `Not in ${nA}. Check whether it should be there.`, cats: ['extra'] },
+      { key: 'other', tone: 'other', title: 'Moved or recreated', desc: 'Different path, or same path with a different ID.', cats: ['moved', 'idmismatch'] }
+    ];
+  }
+
+  function commonRoot(rootPaths, rows) {
+    const candidates = rootPaths.filter(Boolean).map(p => p.replace(/\/+$/, ''));
+    return candidates.find(r => rows.every(x => x.path.toLowerCase().startsWith(r.toLowerCase()))) || '';
+  }
+  function areaOf(path, root) {
+    const rest = root && path.toLowerCase().startsWith(root.toLowerCase()) ? path.slice(root.length) : path;
+    return rest.split('/').filter(Boolean)[0] || lastSeg(root) || '(start item)';
+  }
+
+  // ---------------- page layout ----------------
+  const decodeXml = s => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&amp;/g, '&');
+  function parseLayout(xml) {
+    const out = [], re = /<r\b([^>]*?)\/?>/g;
+    let m;
+    while ((m = re.exec(String(xml || '')))) {
+      const at = {};
+      m[1].replace(/([\w:.-]+)\s*=\s*"([^"]*)"/g, (_, key, v) => { at[key] = decodeXml(v); });
+      if (!at.uid) continue;
+      out.push({ uid: at.uid.toUpperCase(), id: (at['s:id'] || '').toUpperCase(), ph: at['s:ph'] || '', ds: at['s:ds'] || '', par: at['s:par'] || '' });
+    }
+    return out;
+  }
+  // The final layout is stored as changes on top of the shared layout; merge them by component uid.
+  function effectiveLayout(fields) {
+    const map = new Map();
+    parseLayout(fields['__Renderings']).forEach(c => map.set(c.uid, { ...c }));
+    parseLayout(fields['__Final Renderings']).forEach(c => {
+      const cur = map.get(c.uid) || { uid: c.uid, id: '', ph: '', ds: '', par: '' };
+      ['id', 'ph', 'ds', 'par'].forEach(key => { if (c[key]) cur[key] = c[key]; });
+      map.set(c.uid, cur);
+    });
+    return [...map.values()];
+  }
+  function layoutDiff(fa, fb) {
+    const a = effectiveLayout(fa), b = effectiveLayout(fb);
+    if (!a.length && !b.length) return null;
+    const am = new Map(a.map(c => [c.uid, c])), bm = new Map(b.map(c => [c.uid, c]));
+    const res = { onlyA: [], onlyB: [], changed: [], same: 0 };
+    a.forEach(c => {
+      const o = bm.get(c.uid);
+      if (!o) return res.onlyA.push(c);
+      const what = ['id', 'ph', 'ds', 'par'].filter(key => (c[key] || '') !== (o[key] || ''));
+      if (what.length) res.changed.push({ a: c, b: o, what }); else res.same++;
+    });
+    b.forEach(c => { if (!am.has(c.uid)) res.onlyB.push(c); });
+    return res;
+  }
+  function describeLayout(l, nA, nB) {
+    const p = [];
+    if (l.onlyA.length) p.push(`${l.onlyA.length} only in ${nA}`);
+    if (l.onlyB.length) p.push(`${l.onlyB.length} only in ${nB}`);
+    if (l.changed.length) p.push(`${l.changed.length} changed`);
+    return p.join(', ');
+  }
+
+  // ---------------- rendering ----------------
+  function renderResults() {
+    const { A, B, nA, nB, rows, groups, publishMode } = R;
+    $('results').classList.remove('hidden');
+    const nothingRead = !A.items.length && !B.items.length;
+    if (!rows.length) {
+      $('headline').textContent = nothingRead ? 'Nothing was read, so there was nothing to compare' : 'No differences found';
+      $('subline').textContent = nothingRead
+        ? 'Check the start path and language. In Content Editor, the path is under Quick Info.'
+        : publishMode ? 'Everything under this path matches Live.' : `${nA} and ${nB} match under this path.`;
+    } else {
+      $('headline').textContent = `${rows.length} item${rows.length === 1 ? '' : 's'} differ${rows.length === 1 ? 's' : ''} between ${nA} and ${nB}`;
+      const top = groups[0];
+      $('subline').innerHTML = `Start with <b>${esc(top.title)}</b> (${top.rows.length}). ${esc(top.desc)}`;
+    }
+    $('sources').innerHTML = [A, B].map(x => `<div class="source"><b>${esc(label(x))}</b>${x.items.length} items read` +
+      (x.exportedAt ? ` · ${esc(fmtDate(x.exportedAt))}` : '') +
+      (x.truncated ? '<div class="warn">Stopped at the item limit. Raise "Max items" to read everything.</div>' : '') +
+      (x.notFound && x.notFound.length ? `<div class="warn">Not found: ${esc(x.notFound.join(', '))}</div>` : '') +
+      (x.warnings && x.warnings.length ? `<details><summary class="warn">${x.warnings.length} message(s) from Sitecore</summary>${x.warnings.slice(0, 50).map(esc).join('<br>')}</details>` : '') +
+      '</div>').join('');
+    $('groups').innerHTML = groups.map(g => `<button class="group" style="--tone:var(--tone-${g.tone})" data-key="${g.key}" aria-pressed="${activeGroup === g.key}">
+        <div class="count">${g.rows.length}</div><div class="gtitle">${esc(g.title)}</div><div class="gdesc">${esc(g.desc)}</div></button>`).join('');
+    $('groups').querySelectorAll('.group').forEach(btn => btn.onclick = () => {
+      activeGroup = activeGroup === btn.dataset.key ? null : btn.dataset.key;
+      $('groups').querySelectorAll('.group').forEach(x => x.setAttribute('aria-pressed', x.dataset.key === activeGroup));
+      applyFilter();
+    });
+    $('expand').textContent = 'Expand all';
+    applyFilter();
+  }
+
+  const groupIndex = r => { const i = R.groups.findIndex(g => r.cats.some(c => g.cats.includes(c))); return i < 0 ? 99 : i; };
+  function applyFilter() {
+    const q = $('search').value.trim().toLowerCase();
+    const pool = activeGroup ? R.groups.find(g => g.key === activeGroup).rows : R.rows;
+    filtered = pool.filter(r => !q || r.name.toLowerCase().includes(q) || r.path.toLowerCase().includes(q) || r.diffs.some(d => d.field.toLowerCase().includes(q)));
+    filtered = groupBy === 'area'
+      ? [...filtered].sort((x, y) => x.area.localeCompare(y.area) || x.path.localeCompare(y.path))
+      : [...filtered].sort((x, y) => groupIndex(x) - groupIndex(y) || x.path.localeCompare(y.path));
+    $('list').innerHTML = filtered.length ? '' : (R.rows.length ? '<p class="empty">Nothing matches this filter.</p>' : '');
+    shown = 0; lastHeading = null; showMore();
+  }
+
+  function showMore() {
+    const frag = document.createDocumentFragment();
+    filtered.slice(shown, shown + PAGE).forEach(r => {
+      const heading = groupBy === 'area' ? r.area : (activeGroup ? null : (R.groups[groupIndex(r)] || {}).title);
+      if (heading && heading !== lastHeading) {
+        const h = document.createElement('h3'); h.className = 'area-title'; h.textContent = heading; frag.appendChild(h); lastHeading = heading;
+      }
+      const d = document.createElement('details');
+      d.className = 'item';
+      d.innerHTML = `<summary><div class="iname">${esc(r.name)} ${r.cats.map(c => `<span class="chip" style="--tone:var(--tone-${toneOfCat(c)})">${esc(catLabel(c))}</span>`).join('')}${r.language ? `<span class="chip">${esc(r.language)}</span>` : ''}</div>
+        <div class="ipath">${esc(r.path)} <button class="small copyp" data-copy="${esc(r.path)}" title="Copy path">Copy path</button></div></summary>
+        <div class="ibody"><div class="explain">${esc(r.explain)}</div>
+        <div class="meta"><span>ID <code>${esc(r.id)}</code></span><button class="small" data-copy="${esc(r.id)}">Copy ID</button><button class="small" data-copy="${esc(r.path)}">Copy path</button>${r.template ? `<span>Template: ${esc(r.template)}</span>` : ''}</div>
+        <div class="changes"></div></div>`;
+      d.addEventListener('toggle', () => { if (d.open && !d.dataset.done) { d.dataset.done = 1; d.querySelector('.changes').innerHTML = changesHtml(r); } });
+      frag.appendChild(d);
+    });
+    $('list').appendChild(frag);
+    shown += PAGE;
+    $('more').classList.toggle('hidden', shown >= filtered.length);
+  }
+
+  const val = v => v === '' ? '<span class="empty">empty</span>' : esc(v);
+  const isLong = v => v && (v.length > 200 || v.includes('\n') || /^\s*</.test(v));
+  const cmpBox = (a, b) => `<div class="cmp"><div class="lbl">${esc(R.nA)}</div><div>${a}</div><div class="lbl">${esc(R.nB)}</div><div>${b}</div></div>`;
+  const notPresent = '<span class="empty">field not present</span>';
+
+  function changesHtml(r) {
+    let html = '';
+    if (r.layout) html += layoutHtml(r.layout, r.diffs.filter(d => LAYOUT_FIELDS.includes(d.field)));
+    else if (r.diffs.some(d => LAYOUT_FIELDS.includes(d.field))) html += rawLayoutHtml(r.diffs.filter(d => LAYOUT_FIELDS.includes(d.field)), true);
+    r.diffs.filter(d => !LAYOUT_FIELDS.includes(d.field)).forEach(f => {
+      html += `<div class="change"><h4>${esc(f.field.replace(/ \[dup\]$/, ' (second field with this name)'))}</h4>`;
+      if (f.a === null || f.b === null) html += cmpBox(f.a === null ? notPresent : val(f.a), f.b === null ? notPresent : val(f.b));
+      else if (isLong(f.a) || isLong(f.b)) {
+        const lines = lineDiff(pretty(f.a), pretty(f.b));
+        html += lines ? `<pre class="diff">${lines}</pre><p class="hint">Red: only in ${esc(R.nA)} · Green: only in ${esc(R.nB)}</p>` : cmpBox(val(f.a), val(f.b));
+      } else {
+        const w = wordDiff(f.a, f.b);
+        html += w ? cmpBox(w[0], w[1]) : cmpBox(val(f.a), val(f.b));
+      }
+      html += '</div>';
+    });
+    return html;
+  }
+
+  function refName(v) {
+    if (!v) return '<span class="empty">none</span>';
+    const id = (v.match(/^\{[0-9A-F-]{36}\}$/i) || [])[0];
+    if (id) {
+      const n = R.names[id.toUpperCase()];
+      return n ? `<span title="${esc(n.path)}">${esc(n.name)}</span>` : `<code title="${esc(id)}">${esc(id.slice(0, 9))}…}</code>`;
+    }
+    if (v.startsWith('local:')) return `<span title="${esc(v)}">${esc(lastSeg(v))}</span> <span class="hint">(page data)</span>`;
+    return `<span title="${esc(v)}">${esc(lastSeg(v) || v)}</span>`;
+  }
+  const compName = c => c.id ? refName(c.id) : '<span class="empty">unknown component</span>';
+  function layoutHtml(l, raw) {
+    const { nA, nB } = R;
+    const chip = (tone, text) => `<span class="chip" style="--tone:var(--tone-${tone})">${esc(text)}</span>`;
+    let rows = '';
+    l.onlyA.forEach(c => rows += `<tr><td>${chip('publish', 'Only in ' + nA)}</td><td>${compName(c)}</td><td>${esc(c.ph) || '–'}</td><td>${refName(c.ds)}</td></tr>`);
+    l.onlyB.forEach(c => rows += `<tr><td>${chip('removed', 'Only in ' + nB)}</td><td>${compName(c)}</td><td>${esc(c.ph) || '–'}</td><td>${refName(c.ds)}</td></tr>`);
+    l.changed.forEach(({ a, b, what }) => {
+      const ch = key => what.includes(key);
+      rows += `<tr><td>${chip('content', 'Changed')}</td>
+        <td>${ch('id') ? `<del>${compName(a)}</del> → <ins>${compName(b)}</ins>` : compName(a)}</td>
+        <td>${ch('ph') ? `<del>${esc(a.ph) || '–'}</del> → <ins>${esc(b.ph) || '–'}</ins>` : (esc(a.ph) || '–')}</td>
+        <td>${ch('ds') ? `<del>${refName(a.ds)}</del> → <ins>${refName(b.ds)}</ins>` : refName(a.ds)}${ch('par') ? '<div class="hint">Component settings also changed</div>' : ''}</td></tr>`;
+    });
+    return `<div class="change"><h4>Page components</h4>` +
+      (rows ? `<div class="tablewrap"><table class="layout"><thead><tr><th>Status</th><th>Component</th><th>Placeholder</th><th>Data source</th></tr></thead><tbody>${rows}</tbody></table></div>`
+            : '<p class="hint">Same components on both sides; only layout settings differ.</p>') +
+      (l.same ? `<p class="hint">${l.same} other component(s) are the same on both sides.</p>` : '') +
+      rawLayoutHtml(raw, false) + '</div>';
+  }
+  function rawLayoutHtml(raw, open) {
+    const body = raw.map(f => {
+      const lines = f.a !== null && f.b !== null ? lineDiff(pretty(f.a), pretty(f.b)) : null;
+      return `<p class="hint"><b>${esc(f.field)}</b></p>` + (lines ? `<pre class="diff">${lines}</pre>` : cmpBox(f.a === null ? notPresent : val(f.a), f.b === null ? notPresent : val(f.b)));
+    }).join('');
+    return `<details class="raw"${open ? ' open' : ''}><summary>Show raw layout XML</summary>${body}</details>`;
+  }
+
+  function pretty(v) {
+    if (/^\s*</.test(v)) return v.replace(/>\s*</g, '>\n<');
+    if (/^\{[0-9A-F-]{36}\}(\|\{[0-9A-F-]{36}\})+$/i.test(v)) return v.split('|').join('\n');
+    return v;
+  }
+  function lcs(A, B) {
+    const n = A.length, m = B.length;
+    const dp = Array.from({ length: n + 1 }, () => new Uint32Array(m + 1));
+    for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) dp[i][j] = A[i] === B[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    const out = []; let i = 0, j = 0;
+    while (i < n && j < m) {
+      if (A[i] === B[j]) { out.push([' ', A[i++]]); j++; }
+      else if (dp[i + 1][j] >= dp[i][j + 1]) out.push(['-', A[i++]]);
+      else out.push(['+', B[j++]]);
+    }
+    while (i < n) out.push(['-', A[i++]]);
+    while (j < m) out.push(['+', B[j++]]);
+    return out;
+  }
+  function wordDiff(a, b) {
+    const A = a.split(/(\s+)/), B = b.split(/(\s+)/);
+    if (A.length * B.length > 250000) return null;
+    let x = '', y = '';
+    lcs(A, B).forEach(([op, t]) => {
+      if (op === ' ') { x += esc(t); y += esc(t); }
+      else if (op === '-') x += `<del>${esc(t)}</del>`;
+      else y += `<ins>${esc(t)}</ins>`;
+    });
+    return [x || '<span class="empty">empty</span>', y || '<span class="empty">empty</span>'];
+  }
+  function lineDiff(a, b) {
+    const A = a.split('\n'), B = b.split('\n');
+    if (A.length * B.length > 4e6) return null;
+    const out = lcs(A, B);
+    const keep = new Array(out.length).fill(false);
+    out.forEach((l, x) => { if (l[0] !== ' ') for (let y = Math.max(0, x - 2); y <= Math.min(out.length - 1, x + 2); y++) keep[y] = true; });
+    let html = '', gap = false;
+    out.forEach((l, x) => {
+      if (!keep[x]) { if (!gap) { html += '<div class="g">…</div>'; gap = true; } return; }
+      gap = false;
+      html += `<div class="${l[0] === '-' ? 'd' : l[0] === '+' ? 'a' : ''}">${l[0]} ${esc(l[1])}</div>`;
+    });
+    return html;
+  }
+
+  // ---------------- toolbar ----------------
+  $('search').oninput = applyFilter;
+  $('moreBtn').onclick = showMore;
+  const setGroupBy = g => { groupBy = g; $('by-action').setAttribute('aria-pressed', g === 'action'); $('by-area').setAttribute('aria-pressed', g === 'area'); applyFilter(); };
+  $('by-action').onclick = () => setGroupBy('action');
+  $('by-area').onclick = () => setGroupBy('area');
+  $('expand').onclick = () => {
+    const items = [...$('list').querySelectorAll('details.item')];
+    const open = items.some(d => !d.open);
+    items.forEach(d => d.open = open);
+    $('expand').textContent = open ? 'Collapse all' : 'Expand all';
+  };
+  document.addEventListener('click', e => { const b = e.target.closest('[data-copy-target]'); if (b) copy($(b.dataset.copyTarget).textContent, 'Copied'); });
+  $('list').addEventListener('click', e => { const b = e.target.closest('[data-copy]'); if (b) { e.preventDefault(); copy(b.dataset.copy, 'Copied'); } });
+
+  function copy(text, msg) {
+    const done = () => toast(msg);
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done, () => fallbackCopy(text, done));
+    else fallbackCopy(text, done);
+  }
+  function fallbackCopy(text, done) {
+    const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select();
+    try { document.execCommand('copy'); done(); } catch (e) { toast('Copy failed'); }
+    t.remove();
+  }
+  function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 1600); }
+
+  $('copySummary').onclick = () => {
+    const { nA, nB, rows, groups, A } = R;
+    let s = `Content compare: ${nA} vs ${nB} (${fmtDate(new Date().toISOString())})\n`;
+    s += `Path: ${(A.rootPaths || []).join(', ')}\n${rows.length} item(s) with differences\n`;
+    groups.forEach(g => {
+      s += `\n${g.title} (${g.rows.length})\n`;
+      g.rows.slice(0, 25).forEach(r => s += `- ${r.path} [${r.language}]: ${r.cats.map(catLabel).join(', ')}\n`);
+      if (g.rows.length > 25) s += `- …and ${g.rows.length - 25} more\n`;
+    });
+    s += '\nSuggestions only. Changes to a live environment need approval from the technical owner.';
+    copy(s, 'Summary copied. Paste it into Teams or Jira');
+  };
+
+  // Save each side in the same format as Export-Content.ps1 / edge-export.mjs, so it can be
+  // compared again later (or against another environment) under "Export files".
+  $('saveJson').onclick = () => {
+    const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '');
+    [R.A, R.B].forEach((x, i) => setTimeout(() => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([JSON.stringify(x)], { type: 'application/json' }));
+      a.download = `content-${x.environment || 'side'}-${x.database || i + 1}-${stamp}.json`.replace(/\s+/g, '-');
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }, i * 400)); // a short gap so the browser doesn't drop the second download
+    toast('Saving 2 files. Allow multiple downloads if the browser asks');
+  };
+
+  $('csv').onclick = () => {
+    const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+    const lines = [['What to do', 'Labels', 'Name', 'Path', 'Language', 'Item ID', 'Fields', 'Explanation'].map(q).join(',')];
+    filtered.forEach(r => lines.push([(R.groups[groupIndex(r)] || {}).title, r.cats.map(catLabel).join('; '), r.name, r.path, r.language, r.id, r.diffs.map(d => d.field).join('; '), r.explain].map(q).join(',')));
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv' }));
+    a.download = `content-compare-${R.nA}-vs-${R.nB}.csv`.replace(/\s+/g, '-');
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  // ---------------- example (made-up data) ----------------
+  $('demo').onclick = () => {
+    const G = n => { const h = String(n).padEnd(32, String(n)).slice(0, 32).toUpperCase(); return `{${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}}`; };
+    const site = '/sitecore/content/Demo/Site';
+    const dev = '{FE5D7FDF-89C0-4D99-9AA3-B5FBD009C9F3}';
+    const shared = `<r xmlns:p="p" xmlns:s="s"><d id="${dev}"><r uid="${G(1)}" s:id="${G('a')}" s:ph="headless-main" s:ds="${G(5)}" /><r uid="${G(2)}" s:id="${G('b')}" s:ph="headless-main" s:ds="${G(6)}" /></d></r>`;
+    const finalPrev = `<r xmlns:p="p" xmlns:s="s" p:p="1"><d id="${dev}"><r uid="${G(2)}" s:ds="${G(7)}" /><r uid="${G(3)}" s:id="${G('c')}" s:ph="headless-main" s:ds="local:/Data/Spring Promo" /></d></r>`;
+    const it = (n, path, template, fields, extra) => ({ id: G(n), path: site + path, name: lastSeg(path), template, templateId: G('e' + template.length), language: 'en', version: 1, fields, ...extra });
+    const lookup = { [G('a')]: { name: 'Hero Banner', path: '/sitecore/layout/Renderings/Hero Banner' }, [G('b')]: { name: 'Card List', path: '/sitecore/layout/Renderings/Card List' }, [G('c')]: { name: 'Promo', path: '/sitecore/layout/Renderings/Promo' } };
+    const now = new Date().toISOString();
+    const A = { environment: 'Demo', database: 'preview', rootPaths: [site], exportedAt: now, lookup, items: [
+      it(4, '/Home', 'Page', { Title: 'Welcome to our site', __Renderings: shared, '__Final Renderings': finalPrev }),
+      it(8, '/Home/Listing', 'Page', { Title: 'Listing' }),
+      it(5, '/Data/Hero', 'Hero', { heading: 'Big news' }),
+      it(6, '/Data/Cards 2025', 'Cards', { heading: 'Our work' }),
+      it(7, '/Data/Cards 2026', 'Cards', { heading: 'Our latest work' }),
+      it(9, '/Data/Accordion', 'Accordion', { heading: 'Frequently asked questions' })
+    ]};
+    const B = { environment: 'Demo', database: 'live', rootPaths: [site], exportedAt: now, lookup, items: [
+      it(4, '/Home', 'Page', { Title: 'Welcome to the site', __Renderings: shared }),
+      it(5, '/Data/Hero', 'Hero', { heading: 'Big news' }),
+      it(6, '/Data/Cards 2025', 'Cards', { heading: 'Our work' }),
+      it(9, '/Data/Accordion', 'UnknownTemplate', { heading: 'FAQs' }, { templateMissing: true }),
+      it(3, '/Data/Header/Old Link', 'Link', { text: 'Contact' })
+    ]};
+    setStatus('Showing made-up example data.');
+    R = compare(A, B); activeGroup = null; renderResults();
+    $('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  // ---------------- saved projects ----------------
+  // Projects come from two places:
+  //  - added in the sidebar: saved in this browser (localStorage) so they are there next time
+  //  - projects.local.json next to this page (optional, read-only here); only read when served from localhost
+  const local = {
+    get(k) { try { return localStorage.getItem('cc.' + k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem('cc.' + k, v); return true; } catch (e) { return false; } },
+    remove(k) { try { localStorage.removeItem('cc.' + k); } catch (e) { /* storage unavailable */ } }
+  };
+  let browserProjects = [], fileProjects = [], projects = [], selectedKey = null, editing = null;
+  const opt = (v, t) => `<option value="${esc(v)}">${esc(t)}</option>`;
+  const keyOf = p => `${p.source}:${p.id || p.name}`;
+  const curProject = () => projects.find(p => keyOf(p) === selectedKey) || null;
+  const envOf = (p, i) => (p && p.environments && p.environments[i]) || null;
+  const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  // Accept pasted values like SITECORE_EDGE_CONTEXT_ID=abc (same clean-up the reader uses)
+  const cleanId = v => window.EdgeExport ? EdgeExport.cleanContextId(v) : String(v || '').trim();
+  const cleanEnv = e => ({ name: String(e.name || '').trim(), previewContextId: cleanId(e.previewContextId), liveContextId: cleanId(e.liveContextId) });
+  const cleanProject = p => ({
+    name: String(p.name || '').trim(), startPath: String(p.startPath || '').trim(),
+    languages: Array.isArray(p.languages) ? p.languages.join(', ') : String(p.languages || 'en'),
+    environments: (p.environments || []).map(cleanEnv).filter(e => e.name)
+  });
+
+  function loadBrowserProjects() {
+    try { browserProjects = (JSON.parse(local.get('projects') || '[]') || []).map(p => ({ ...cleanProject(p), id: p.id || newId(), source: 'browser' })); }
+    catch (e) { browserProjects = []; }
+  }
+  function saveBrowserProjects() {
+    const ok = local.set('projects', JSON.stringify(browserProjects.map(({ source, ...p }) => p)));
+    $('sbNote').innerHTML = ok
+      ? 'Saved in this browser on this computer only. Export to back up or move to another computer.'
+      : '<span class="error">This browser blocked saving, so projects will be lost when the page closes. Use Export to keep them.</span>';
+  }
+  function rebuild() {
+    projects = [...browserProjects, ...fileProjects];
+    if (selectedKey && !curProject()) selectedKey = null;
+    renderSidebar();
+    fillEnvSelects();
+    setMode(mode);
+  }
+
+  function renderSidebar() {
+    $('projEmpty').classList.toggle('hidden', projects.length > 0);
+    $('exportBtn').disabled = $('clearBtn').disabled = !browserProjects.length;
+    $('projList').innerHTML = projects.map(p => {
+      const envs = p.environments.map(e => {
+        const n = (e.previewContextId ? 1 : 0) + (e.liveContextId ? 1 : 0);
+        const title = n === 2 ? 'Preview and Live IDs saved' : n === 1 ? (e.previewContextId ? 'Only the Preview ID is saved' : 'Only the Live ID is saved') : 'No IDs saved';
+        return `<span class="envchip ${n === 2 ? 'ready' : n === 1 ? 'partial' : ''}" title="${title}">${esc(e.name)}</span>`;
+      }).join('');
+      const k = keyOf(p);
+      return `<div class="proj" role="button" tabindex="0" data-key="${esc(k)}" aria-current="${k === selectedKey}">
+        <span class="pname">${esc(p.name)}</span><span class="ppath" title="${esc(p.startPath)}">${esc(p.startPath || 'No start path')}</span>
+        <span class="penvs">${envs || '<span class="envchip">No environments</span>'}</span>
+        ${p.source === 'browser' ? `<button class="small pedit" data-edit="${esc(p.id)}" aria-label="Edit ${esc(p.name)}">Edit</button>` : '<span class="ptag" title="From projects.local.json. Edit the file to change it.">file</span>'}
+      </div>`;
+    }).join('');
+  }
+  $('projList').addEventListener('click', e => {
+    const edit = e.target.closest('[data-edit]');
+    if (edit) { e.stopPropagation(); return openEditor(browserProjects.find(p => p.id === edit.dataset.edit)); }
+    const card = e.target.closest('.proj');
+    if (card) selectProject(card.dataset.key);
+  });
+  $('projList').addEventListener('keydown', e => {
+    const card = e.target.closest('.proj');
+    if (card && e.target === card && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); selectProject(card.dataset.key); }
+  });
+
+  function selectProject(key) {
+    selectedKey = key;
+    local.set('selected', key);
+    renderSidebar();
+    fillEnvSelects();
+    setMode(mode === 'files' ? 'unpub' : mode);
+  }
+  $('p-manual').onclick = () => {
+    selectedKey = null; local.remove('selected');
+    ['u-prev', 'u-live', 'e-a-id', 'e-b-id'].forEach(id => $(id).value = '');
+    renderSidebar(); setMode(mode);
+  };
+
+  function fillEnvSelects() {
+    const p = curProject(), envs = (p && p.environments) || [];
+    $('p-name').textContent = p ? p.name : '';
+    const options = envs.map((e, i) => opt(i, e.name)).join('');
+    ['p-env', 'p-a', 'p-b'].forEach(id => $(id).innerHTML = options);
+    // Sensible defaults: the last environment is usually production
+    const last = Math.max(0, envs.length - 1);
+    $('p-env').value = String(last);
+    $('p-a').value = String(Math.max(0, last - 1));
+    $('p-b').value = String(last);
+  }
+  function applyProject() {
+    const p = curProject();
+    if (!p || mode === 'files') return;
+    if (p.startPath) $('c-path').value = p.startPath;
+    if (p.languages) $('c-lang').value = p.languages;
+    if (mode === 'unpub') {
+      const e = envOf(p, $('p-env').selectedIndex);
+      if (!e) return;
+      $('u-env').value = `${p.name} ${e.name}`;
+      $('u-prev').value = e.previewContextId || '';
+      $('u-live').value = e.liveContextId || '';
+    } else if (mode === 'envs') {
+      const a = envOf(p, $('p-a').selectedIndex), b = envOf(p, $('p-b').selectedIndex);
+      const key = $('e-type').value === 'preview' ? 'previewContextId' : 'liveContextId';
+      if (a) { $('e-a-name').value = a.name; $('e-a-id').value = a[key] || ''; }
+      if (b) { $('e-b-name').value = b.name; $('e-b-id').value = b[key] || ''; }
+    }
+  }
+  ['p-env', 'p-a', 'p-b', 'e-type'].forEach(id => $(id).addEventListener('change', applyProject));
+
+  // ----- editor -----
+  function envRow(e) {
+    const type = $('pd-show').checked ? 'text' : 'password';
+    const div = document.createElement('div');
+    div.className = 'env-row';
+    div.innerHTML = `<label class="field"><span>Name</span><input type="text" class="er-name" value="${esc(e.name)}" placeholder="e.g. UAT"></label>
+      <label class="field"><span>Preview Context ID</span><input type="${type}" class="er-prev id" value="${esc(e.previewContextId)}" autocomplete="off"></label>
+      <label class="field"><span>Live Context ID</span><input type="${type}" class="er-live id" value="${esc(e.liveContextId)}" autocomplete="off"></label>
+      <button type="button" class="small rm" aria-label="Remove environment">Remove</button>`;
+    div.querySelector('.rm').onclick = () => div.remove();
+    return div;
+  }
+  function openEditor(p) {
+    editing = p || null;
+    $('pdTitle').textContent = p ? 'Edit project' : 'Add project';
+    $('pd-name').value = p ? p.name : '';
+    $('pd-path').value = p ? p.startPath : ($('c-path').value || '');
+    $('pd-lang').value = p ? p.languages : 'en';
+    $('pd-show').checked = false;
+    $('pd-error').textContent = '';
+    $('pd-delete').classList.toggle('hidden', !p);
+    const envs = p ? p.environments : ['DEV', 'UAT', 'PROD'].map(name => ({ name }));
+    $('pd-envs').replaceChildren(...envs.map(e => envRow(cleanEnv(e))));
+    $('projDialog').showModal();
+    $('pd-name').focus();
+  }
+  $('addProject').onclick = () => openEditor(null);
+  $('pd-addEnv').onclick = () => { const r = envRow(cleanEnv({})); $('pd-envs').appendChild(r); r.querySelector('.er-name').focus(); };
+  $('pd-show').onchange = () => $('pd-envs').querySelectorAll('input.id').forEach(i => i.type = $('pd-show').checked ? 'text' : 'password');
+  $('pd-cancel').onclick = () => $('projDialog').close();
+  $('pd-delete').onclick = () => {
+    if (!editing || !confirm(`Delete "${editing.name}" and its saved Context IDs from this browser?`)) return;
+    browserProjects = browserProjects.filter(p => p.id !== editing.id);
+    saveBrowserProjects();
+    $('projDialog').close();
+    rebuild();
+  };
+  $('projForm').onsubmit = e => {
+    e.preventDefault();
+    const data = cleanProject({
+      name: $('pd-name').value, startPath: $('pd-path').value, languages: $('pd-lang').value,
+      environments: [...$('pd-envs').querySelectorAll('.env-row')].map(r => ({
+        name: r.querySelector('.er-name').value,
+        previewContextId: r.querySelector('.er-prev').value,
+        liveContextId: r.querySelector('.er-live').value
+      }))
+    });
+    if (!data.name) { $('pd-error').textContent = 'Give the project a name.'; return $('pd-name').focus(); }
+    if (!data.environments.length) { $('pd-error').textContent = 'Add at least one environment with a name.'; return; }
+    if (browserProjects.some(p => p.name.toLowerCase() === data.name.toLowerCase() && (!editing || p.id !== editing.id))) {
+      $('pd-error').textContent = 'A project with this name already exists.'; return $('pd-name').focus();
+    }
+    if (editing) Object.assign(editing, data);
+    else { editing = { ...data, id: newId(), source: 'browser' }; browserProjects.push(editing); }
+    saveBrowserProjects();
+    $('projDialog').close();
+    selectedKey = keyOf(editing);
+    local.set('selected', selectedKey);
+    rebuild();
+    toast(`Saved "${data.name}"`);
+  };
+
+  // ----- import / export / clear -----
+  $('exportBtn').onclick = () => {
+    if (!confirm('The exported file contains your Context IDs. Keep it somewhere safe and don\'t email it or commit it. Continue?')) return;
+    const json = JSON.stringify({ projects: browserProjects.map(({ source, id, ...p }) => p) }, null, 2);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+    a.download = 'projects.local.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+  $('importBtn').onclick = () => $('importFile').click();
+  $('importFile').onchange = () => {
+    const f = $('importFile').files[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      try {
+        const list = (JSON.parse(String(r.result).replace(/^﻿/, '')).projects || []).map(cleanProject).filter(p => p.name && p.environments.length);
+        if (!list.length) throw new Error('No projects found in this file.');
+        let added = 0, updated = 0;
+        list.forEach(p => {
+          const existing = browserProjects.find(x => x.name.toLowerCase() === p.name.toLowerCase());
+          if (existing) { Object.assign(existing, p); updated++; } else { browserProjects.push({ ...p, id: newId(), source: 'browser' }); added++; }
+        });
+        saveBrowserProjects(); rebuild();
+        toast(`Imported: ${added} added, ${updated} updated`);
+      } catch (e) { setStatus('Could not import ' + f.name + ': ' + e.message, true); }
+      $('importFile').value = '';
+    };
+    r.readAsText(f);
+  };
+  $('clearBtn').onclick = () => {
+    if (!confirm('Remove all projects and Context IDs saved in this browser? Export first if you want a backup.')) return;
+    browserProjects = []; local.remove('projects'); local.remove('selected');
+    saveBrowserProjects(); rebuild();
+  };
+
+  async function loadFileProjects() {
+    if (location.protocol === 'file:') return;
+    try {
+      const res = await fetch('projects.local.json', { cache: 'no-store' });
+      if (!res.ok) return;
+      const json = await res.json();
+      fileProjects = (json.projects || []).map(cleanProject).filter(p => p.name && p.environments.length).map(p => ({ ...p, source: 'file' }));
+    } catch (e) { setStatus('projects.local.json could not be read: ' + e.message, true); return; }
+    rebuild();
+  }
+
+  // ---------------- content tree picker ----------------
+  // Uses a Context ID already entered (Preview preferred) to browse /sitecore/content and fill a start path.
+  function treeContextId(target) {
+    if (target === 'pd-path') {
+      const row = [...$('pd-envs').querySelectorAll('.env-row')].find(r => r.querySelector('.er-prev').value || r.querySelector('.er-live').value);
+      return row ? (row.querySelector('.er-prev').value || row.querySelector('.er-live').value) : '';
+    }
+    return mode === 'unpub' ? ($('u-prev').value || $('u-live').value) : ($('e-a-id').value || $('e-b-id').value);
+  }
+  async function loadKids(ul, path, ctx, lang, target) {
+    ul.innerHTML = '<li class="hint">Loading…</li>';
+    try {
+      const kids = await EdgeExport.listChildren(ctx, path, lang);
+      ul.innerHTML = kids.length ? '' : '<li class="hint">No items</li>';
+      kids.forEach(k => {
+        const li = document.createElement('li');
+        li.innerHTML = `<button type="button" class="tw">${k.hasChildren ? '▸' : ''}</button><button type="button" class="tn" title="${esc(k.path)}">${esc(k.name)}</button><ul class="tree hidden"></ul>`;
+        const [tw, tn, sub] = li.children;
+        tw.onclick = () => {
+          if (!k.hasChildren) return;
+          const open = sub.classList.toggle('hidden') === false;
+          tw.textContent = open ? '▾' : '▸';
+          if (open && !sub.dataset.loaded) { sub.dataset.loaded = 1; loadKids(sub, k.path, ctx, lang, target); }
+        };
+        tn.onclick = () => { $(target).value = k.path; $(target).dispatchEvent(new Event('change')); $('treeDialog').close(); toast('Path set: ' + k.path); };
+        ul.appendChild(li);
+      });
+    } catch (e) {
+      ul.innerHTML = `<li class="error">${esc(e.blocked ? e.message + ' Open the page through the local server or the hosted site.' : e.message)}</li>`;
+    }
+  }
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-browse]');
+    if (!b) return;
+    const target = b.dataset.browse, ctx = treeContextId(target);
+    if (!ctx.trim()) { toast('Add a Context ID first (Preview works best)'); return; }
+    if (!window.EdgeExport) { toast('edge-core.js was not found'); return; }
+    const lang = ((target === 'pd-path' ? $('pd-lang').value : $('c-lang').value).split(',')[0] || 'en').trim();
+    $('treeDialog').showModal();
+    loadKids($('treeRoot'), '/sitecore/content', ctx, lang, target);
+  });
+
+  loadBrowserProjects();
+  selectedKey = local.get('selected');
+  projects = [...browserProjects];
+  if (selectedKey && !curProject()) selectedKey = null;
+  renderSidebar();
+  fillEnvSelects();
+  setMode(store.get('mode') || 'unpub');
+  loadFileProjects();
+})();
+</script>
+</body>
+</html>

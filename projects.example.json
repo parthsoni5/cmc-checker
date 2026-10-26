@@ -1,0 +1,23 @@
+{
+  "projects": [
+    {
+      "name": "Example Project",
+      "startPath": "/sitecore/content/Collection/Site",
+      "languages": "en",
+      "environments": [
+        { "name": "DEV",  "previewContextId": "paste-dev-preview-id",  "liveContextId": "paste-dev-live-id" },
+        { "name": "UAT",  "previewContextId": "paste-uat-preview-id",  "liveContextId": "paste-uat-live-id" },
+        { "name": "PROD", "previewContextId": "paste-prod-preview-id", "liveContextId": "paste-prod-live-id" }
+      ]
+    },
+    {
+      "name": "Another Project",
+      "startPath": "/sitecore/content/Another/Site",
+      "languages": "en, fr",
+      "environments": [
+        { "name": "UAT",  "previewContextId": "", "liveContextId": "" },
+        { "name": "PROD", "previewContextId": "", "liveContextId": "" }
+      ]
+    }
+  ]
+}

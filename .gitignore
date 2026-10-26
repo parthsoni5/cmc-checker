@@ -1,0 +1,6 @@
+# Holds Context IDs (credentials). Never commit it.
+projects.local.json
+
+# Exports can contain client content
+content-*.json
+*.csv
